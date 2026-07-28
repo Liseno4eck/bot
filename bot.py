@@ -3,21 +3,16 @@ import vk_api
 from vk_api.utils import get_random_id
 
 # --- НАСТРОЙКИ ---
-# ВСТАВЬТЕ СЮДА НОВЫЙ ТОКЕН (старый не используйте!)
+# ВСТАВЬ СЮДА НОВЫЙ ТОКЕН (между одинарными кавычками, без скобок!)
 VK_TOKEN = 'vk1.a.j7YzvNPaYcJFfVUlTXUDnGeQDH3RVtJCRDIu16DenHlNBqJxBW1p6qJErZMDXRzfy41pVabgENQO8MBlcydzvsYqGepOhfHwnWBzeQ-PShrt2_HrhLQsOEXzUFjhxDAnqG_BNTSaFojr3He5Ctt_sFpmdQYSg-DdI6x--gmY5UpGwWFxXOvbYbs0Mg_ZrhdQNE7kJXAgLrbSWxXkMP7Kmg' 
 
-# ID чата (из вашего запроса)
-# Для личных сообщений (ЛС) это ID пользователя (число). 
-# Для беседы это peer_id = 2000000000 + id беседы. 
-# У тебя сейчас стоит 2000000416 — это ID беседы.
+# ID чата (для беседы: 2000000000 + id беседы)
 CHAT_ID = 2000000416
 
 # Текст рассылки
 AD_TEXT = "Тест: рассылка работает!"
 
-# Интервал в секундах.
-# ВАЖНО: Для тестов ставь минимум 300 сек (5 минут).
-# Если ставить 60 сек, ВК почти гарантированно выдаст бан по Flood Control (ошибка 9).
+# Интервал в секундах (минимум 300 для тестов)
 DELAY_SECONDS = 300
 
 print("🚀 ЗАПУСК СКРИПТА РАССЫЛКИ...")
@@ -35,7 +30,7 @@ try:
             vk.messages.send(
                 peer_id=CHAT_ID,
                 message=AD_TEXT,
-                random_id=get_random_id() # Обязательно для уникальности сообщений
+                random_id=get_random_id()
             )
             print(f"📩 Сообщение отправлено в {time.strftime('%H:%M:%S')}")
             
@@ -43,15 +38,23 @@ try:
             time.sleep(DELAY_SECONDS)
             
         except vk_api.exceptions.ApiError as e:
+            # ИСПРАВЛЕНИЕ: правильный доступ к тексту ошибки
             error_code = e.code
-            error_msg = e.error_msg
+            # Текст ошибки теперь лежит в e.error['error_msg']
+            error_msg = e.error.get('error_msg', 'Неизвестная ошибка API')
+            
             print(f"💥 Ошибка VK API: {error_code} - {error_msg}")
             
             if error_code == 9: # Flood Control
-                print("⚠️ Обнаружен Flood Control. Увеличиваю паузу до 10 минут, чтобы не получить бан.")
+                print("⚠️ Обнаружен Flood Control. Увеличиваю паузу до 10 минут.")
                 time.sleep(600)
+            elif error_code == 5: # Invalid Token
+                print("💥 КРИТИЧНО: Неверный токен или отозван. Скрипт остановится.")
+                break
+            elif error_code == 15: # Access Denied
+                print("💥 КРИТИЧНО: У бота нет прав на отправку сообщений в этом чате.")
+                break
             else:
-                # Для других ошибок (например, неверный токен) лучше остановиться или спать долго
                 time.sleep(60)
                 
         except Exception as e:
@@ -60,3 +63,4 @@ try:
 
 except Exception as e:
     print(f"💥 Критическая ошибка при старте: {e}")
+    print("💡 Подсказка: Чаще всего это неверный токен или отсутствие кавычек.")
