@@ -4,19 +4,16 @@ from vk_api.utils import get_random_id
 import time
 from threading import Thread
 
-VK_TOKEN = 'vk1.a.j7YzvNPaYcJFfVUlTXUDnGeQDH3RVtJCRDIu16DenHlNBqJxBW1p6qJErZMDXRzfy41pVabgENQO8MBlcydzvsYqGepOhfHwnWBzeQ-PShrt2_HrhLQsOEXzUFjhxDAnqG_BNTSaFojr3He5Ctt_sFpmdQYSg-DdI6x--gmY5UpGwWFxXOvbYbs0Mg_ZrhdQNE7kJXAgLrbSWxXkMP7Kmg'  # права: messages
+VK_TOKEN = 'vk1.a.j7YzvNPaYcJFfVUlTXUDnGeQDH3RVtJCRDIu16DenHlNBqJxBW1p6qJErZMDXRzfy41pVabgENQO8MBlcydzvsYqGepOhfHwnWBzeQ-PShrt2_HrhLQsOEXzUFjhxDAnqG_BNTSaFojr3He5Ctt_sFpmdQYSg-DdI6x--gmY5UpGwWFxXOvbYbs0Mg_ZrhdQNE7kJXAgLrbSWxXkMP7Kmg'
 
-MY_TEXT = """🔥 Пиар-сообщение! 🔥
-Заходи в наше сообщество: vk.com/club123456789
-Будем рады видеть тебя! 😊"""
+MY_TEXT = ""тест пиар"""
 
-INTERVAL = 300  # 1 час
+INTERVAL = 300
 
 vk_session = vk_api.VkApi(token=VK_TOKEN)
 longpoll = VkLongPoll(vk_session)
 vk = vk_session.get_api()
 
-*Список чатов, где запущен пиар*
 active_chats = {}
 
 def pr_sender(chat_id):
@@ -39,7 +36,6 @@ for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         peer_id = event.peer_id
         
-        # Проверяем, что это чат (peer_id > 2000000000)
         if peer_id > 2000000000 and event.text.strip().lower() == '!пиар':
             if peer_id in active_chats and active_chats[peer_id]:
                 vk.messages.send(
