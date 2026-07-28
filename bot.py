@@ -36,7 +36,7 @@ for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         peer_id = event.peer_id
         
-        if peer_id > 2000000000 and event.text.strip().lower() == '!пиар':
+        if event.text.strip().lower() == '!пиар':
             if peer_id in active_chats and active_chats[peer_id]:
                 vk.messages.send(
                     peer_id=peer_id,
@@ -50,6 +50,6 @@ for event in longpoll.listen():
                 thread.start()
                 vk.messages.send(
                     peer_id=peer_id,
-                    message="✅ Пиар запущен! Буду писать раз в час",
+                    message="✅ Пиар запущен! Буду писать раз в 5 минут",
                     random_id=get_random_id()
                 )
