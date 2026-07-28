@@ -4,8 +4,8 @@ from vk_api.utils import get_random_id
 import time
 from threading import Thread
 
-VK_TOKEN = 'vk1.a.j7YzvNPaYcJFfVUlTXUDnGeQDH3RVtJCRDIu16DenHlNBqJxBW1p6qJErZMDXRzfy41pVabgENQO8MBlcydzvsYqGepOhfHwnWBzeQ-PShrt2_HrhLQsOEXzUFjhxDAnqG_BNTSaFojr3He5Ctt_sFpmdQYSg-DdI6x--gmY5UpGwWFxXOvbYbs0Mg_ZrhdQNE7kJXAgLrbSWxXkMP7Kmg'
-GROUP_ID = 240350664  # ID сообщества
+VK_TOKEN = ''vk1.a.j7YzvNPaYcJFfVUlTXUDnGeQDH3RVtJCRDIu16DenHlNBqJxBW1p6qJErZMDXRzfy41pVabgENQO8MBlcydzvsYqGepOhfHwnWBzeQ-PShrt2_HrhLQsOEXzUFjhxDAnqG_BNTSaFojr3He5Ctt_sFpmdQYSg-DdI6x--gmY5UpGwWFxXOvbYbs0Mg_ZrhdQNE7kJXAgLrbSWxXkMP7Kmg'
+GROUP_ID = 240350664
 
 MY_TEXT = 'тест пиар'
 INTERVAL = 300
@@ -30,37 +30,30 @@ def pr_sender(chat_id):
             break
         time.sleep(INTERVAL)
 
-print("Бот запущен. Отслеживаю добавление в чаты...")
+print("Бот запущен. Жду команду !пиар...")
 
 for event in longpoll.listen():
+    print(f"Событие: {event.type}, peer_id: {event.peer_id}, текст: {event.text}")  # ОТЛАДКА
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         peer_id = event.peer_id
+        text = event.text.strip().lower()
+        print(f"Обработка: peer_id={peer_id}, text={text}")  # ОТЛАДКА
         
-        # Если пишут в беседу
-        if peer_id > 2000000000:
-            if event.text.strip().lower() == '!пиар':
-                if peer_id in active_chats and active_chats[peer_id]:
-                    vk.messages.send(
-                        peer_id=peer_id,
-                        message="⚠️ Пиар уже запущен в этом чате",
-                        random_id=get_random_id()
-                    )
-                else:
-                    active_chats[peer_id] = True
-                    thread = Thread(target=pr_sender, args=(peer_id,))
-                    thread.daemon = True
-                    thread.start()
-                    vk.messages.send(
-                        peer_id=peer_id,
-                        message="✅ Пиар запущен! Буду писать раз в 5 минут",
-                        random_id=get_random_id()
-                    )
-    elif event.type == VkEventType.CHAT_UPDATE:
-        if event.info.get('type') == 'invite' and event.info.get('invited_by') == -GROUP_ID:
-            chat_id = event.chat_id + 2000000000
-            if chat_id not in active_chats:
-                active_chats[chat_id] = True
-                thread = Thread(target=pr_sender, args=(chat_id,))
+        if text == '!пиар':
+            print(f"Команда распознана в чате {peer_id}")  # ОТЛАДКА
+            if peer_id in active_chats and active_chats[peer_id]:
+                vk.messages.send(
+                    peer_id=peer_id,
+                    message="⚠️ Пиар уже запущен в этом чате",
+                    random_id=get_random_id()
+                )
+            else:
+                active_chats[peer_id] = True
+                thread = Thread(target=pr_sender, args=(peer_id,))
                 thread.daemon = True
                 thread.start()
-                print(f"Бот добавлен в чат {chat_id}, пиар запущен автоматически")
+                vk.messages.send(
+                    peer_id=peer_id,
+                    message="✅ Пиар запущен! Буду писать раз в 5 минут",
+                    random_id=get_random_id()
+                )
