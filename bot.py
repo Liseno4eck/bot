@@ -11,7 +11,7 @@ MY_TEXT = "работает"
 INTERVAL = 300
 
 vk_session = vk_api.VkApi(token=VK_TOKEN)
-longpoll = VkLongPoll(vk_session, group_id=GROUP_ID)
+longpoll = VkLongPoll(vk_session)
 vk = vk_session.get_api()
 
 active_chats = {}
@@ -20,26 +20,23 @@ def pr_sender(chat_id):
     while chat_id in active_chats and active_chats[chat_id]:
         try:
             vk.messages.send(peer_id=chat_id, message=MY_TEXT, random_id=get_random_id())
-            print(f"Пиар отправлен в чат {chat_id} в {time.strftime('%H:%M:%S')}")
+            print(f"Пиар отправлен в чат {chat_id}")
         except Exception as e:
-            print(f"Ошибка в чате {chat_id}: {e}")
+            print(f"Ошибка: {e}")
             break
         time.sleep(INTERVAL)
 
-print("Бот запущен. Добавьте бота в чат и напишите !пиар")
+print("Бот запущен")
 
 for event in longpoll.listen():
-    if event.type == VkEventType.MESSAGE_NEW:
+    if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         peer_id = event.peer_id
+        text = event.text.strip().lower()
         
-        # Если сообщение из беседы (peer_id > 2000000000)
-        if peer_id > 2000000000 and event.text.strip().lower() == '!пиар':
+        if text == '!пиар':
             if peer_id in active_chats and active_chats[peer_id]:
-                vk.messages.send(peer_id=peer_id, message="⚠️ Пиар уже запущен", random_id=get_random_id())
+                vk.messages.send(peer_id=peer_id, message="⚠️ Уже запущен", random_id=get_random_id())
             else:
                 active_chats[peer_id] = True
-                thread = Thread(target=pr_sender, args=(peer_id,))
-                thread.daemon = True
-                thread.start()
-                vk.messages.send(peer_id=peer_id, message="✅ ПИАР АКТИВИРОВАН", random_id=get_random_id())
-                print(f"Пиар активирован в чате {peer_id}")
+                Thread(target=pr_sender, args=(peer_id,)).start()
+                vk.messages.send(peer_id=peer_id, message="✅ Запущен", random_id=get_random_id())
