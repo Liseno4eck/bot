@@ -116,7 +116,7 @@ class PRBot:
             time.sleep(3600)
     
     def handle_command(self, message):
-[29.07.2026 19:29] TG Ai Chat: text = message.get('text', '').strip()
+        text = message.get('text', '').strip()
         user_id = message['from_id']
         peer_id = message['peer_id']
         
