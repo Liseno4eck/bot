@@ -171,10 +171,10 @@ class PRBot:
     else:
         self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
     return
-    elif command == '/-доступ':
-    if not self.is_owner(user_id):
-       self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
-       return
+    if command == '/-доступ':
+        if not self.is_owner(user_id):
+           self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
+           return
 
     target_id = self.extract_user_id(message, command_text)
 
