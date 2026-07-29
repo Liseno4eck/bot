@@ -23,7 +23,8 @@ class PRBot:
         if fwd:
            return fwd[0].get("from_id")
 
-    # Упоминание [id123|Имя]
+   def extract_user_id(self, message, text):
+    # Упоминание @id123 (Имя)
     match = re.search(r"\[id(\d+)\|", text)
     if match:
         return int(match.group(1))
