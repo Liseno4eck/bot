@@ -157,7 +157,7 @@ class PRBot:
         
         if command == '/+доступ':
         if not self.is_owner(user_id):
-        self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
+           self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
         return
 
     target_id = self.extract_user_id(message, command_text)
