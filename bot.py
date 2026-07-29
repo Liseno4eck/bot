@@ -1,16 +1,16 @@
 import vk_api
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
+from vk_api.utils import get_random_id
 import time
 import threading
 import json
 from datetime import datetime
 
-# Конфигурация
+*Конфигурация*
 TOKEN = "vk1.a.baBit_arE7XyBbqXVkUrUYKMqCOw2zAZJ5_ZiFTyyW2hblfgfj0xadnRuTLIJSpa7G58feIA1p-UIt5ysnef1gwh4u78K3vV51Wc5IBmPLOJ5JyTO49wzxoWL1tMwtg5AQgC4QhV7Ka4tAJXgbqgVp75gQ39T11_72y4ZYiuTCgv36Sw8nrvcxOKPxcrW9Bme2Cx0UJDKud6S4bysNUO-w"
-GROUP_ID = 2000000419
-OWNER_ID = 875762552  # ID владельца бота, замените на свой или оставьте None
+GROUP_ID = 240350664  # ID сообщества, а не чата!
+OWNER_ID = 875762552
 
-# Файлы для хранения данных
 PEERS_FILE = "peers.json"
 SETTINGS_FILE = "settings.json"
 
@@ -20,7 +20,6 @@ class PRBot:
         self.vk = self.vk_session.get_api()
         self.longpoll = VkBotLongPoll(self.vk_session, GROUP_ID)
         
-        # Загружаем данные
         self.peers = self.load_data(PEERS_FILE, [])
         self.settings = self.load_data(SETTINGS_FILE, {
             "broadcast_text": "",
@@ -28,13 +27,68 @@ class PRBot:
             "owner_id": OWNER_ID
         })
         
-        # Проверяем, что peers - это список
         if not isinstance(self.peers, list):
-            print(f"Внимание: peers.json содержит не список, а {type(self.peers)}. Сбрасываю в пустой список.")
             self.peers = []
             self.save_data(PEERS_FILE, self.peers)
         
-        # Запускаем рассылку в отдельном потоке
+        self.broadcast_thread = threading.Thread(target=self.broadcast_loop, daemon=True)
+        self.broadcast_thread.start()
+    
+    def load_data(self, filename, default):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.save_data(filename, default)
+            return default
+    
+    def save_data(self, filename, data):
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    
+    def is_owner(self, user_id):
+        if self.settings["owner_id"] is None:
+            self.settings["owner_id"] = user_id
+            self.save_data(SETTINGS_FILE, self.settings)
+            return True
+        return user_id == self.settings["owner_id"]
+    
+    def add_peer(self, peer_id):
+        if peer_id not in self.peers:
+            self.peers.append(peer_id)
+            self.save_data(PEERS_FILE, self.peers)
+            return True
+        return False
+    
+    def remove_peer(self, peer_id):
+        if peer_id in self.peers:
+            self.peers.remove(peer_id)
+            self.save_data(PEERS_FILE, self.peers)
+            return True
+        return False
+    
+    def send_message(self, peer_id, text):
+        try:
+            self.vk.messages.send(
+                peer_id=peer_id,
+                message=text,
+                random_id=get_random_id()
+            )
+        except Exception as e:
+            print(f"Ошибка: {e}")
+    
+    def broadcast_message(self):
+        if not self.settings["broadcast_text"]:
+            return
+        for peer_id in self.peers:
+            try:
+                self.vk.messages.send(
+                    peer_id=peer_id,
+                    message=self.settings["broadcast_text"],
+                    random_id=get_random_id()
+                )
+            except Exception as e:
+                print(f"Ошибка: {e}")        # Запускаем рассылку в отдельном потоке
         self.broadcast_thread = threading.Thread(target=self.broadcast_loop, daemon=True)
         self.broadcast_thread.start()
     
