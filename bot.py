@@ -81,41 +81,41 @@ def save_data(self, filename, data):
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
-    def is_owner(self, user_id):
+def is_owner(self, user_id):
         return user_id == OWNER_ID
     
-    def has_access(self, user_id):
+def has_access(self, user_id):
         return self.is_owner(user_id) or user_id in self.access_list
     
-    def add_access(self, user_id):
+def add_access(self, user_id):
         if user_id not in self.access_list:
             self.access_list.append(user_id)
             self.save_data(ACCESS_FILE, self.access_list)
             return True
         return False
     
-    def remove_access(self, user_id):
+def remove_access(self, user_id):
         if user_id in self.access_list:
             self.access_list.remove(user_id)
             self.save_data(ACCESS_FILE, self.access_list)
             return True
         return False
     
-    def add_peer(self, peer_id):
+def add_peer(self, peer_id):
         if peer_id not in self.peers:
             self.peers.append(peer_id)
             self.save_data(PEERS_FILE, self.peers)
             return True
         return False
     
-    def remove_peer(self, peer_id):
+def remove_peer(self, peer_id):
         if peer_id in self.peers:
             self.peers.remove(peer_id)
             self.save_data(PEERS_FILE, self.peers)
             return True
         return False
     
-    def send_message(self, peer_id, text):
+def send_message(self, peer_id, text):
         try:
             self.vk.messages.send(
                 peer_id=peer_id,
@@ -125,7 +125,7 @@ def save_data(self, filename, data):
         except Exception as e:
             print(f"Ошибка: {e}")
     
-    def broadcast_message(self):
+def broadcast_message(self):
         if not self.settings["broadcast_text"]:
             return
         for peer_id in self.peers:
@@ -139,13 +139,13 @@ def save_data(self, filename, data):
             except Exception as e:
                 print(f"Ошибка: {e}")
     
-    def broadcast_loop(self):
+def broadcast_loop(self):
         while True:
             if self.settings["is_running"] and self.settings["broadcast_text"] and self.peers:
                 self.broadcast_message()
             time.sleep(60)
     
-    def handle_command(self, message):
+def handle_command(self, message):
         text = message.get('text', '').strip()
         user_id = message['from_id']
         peer_id = message['peer_id']
