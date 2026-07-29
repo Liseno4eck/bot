@@ -6,7 +6,7 @@ import threading
 import json
 from datetime import datetime
 
-# Конфигурация
+#Конфигурация
 TOKEN = "vk1.a.baBit_arE7XyBbqXVkUrUYKMqCOw2zAZJ5_ZiFTyyW2hblfgfj0xadnRuTLIJSpa7G58feIA1p-UIt5ysnef1gwh4u78K3vV51Wc5IBmPLOJ5JyTO49wzxoWL1tMwtg5AQgC4QhV7Ka4tAJXgbqgVp75gQ39T11_72y4ZYiuTCgv36Sw8nrvcxOKPxcrW9Bme2Cx0UJDKud6S4bysNUO-w"
 GROUP_ID = 240350664
 OWNER_ID = 875762552
@@ -36,37 +36,27 @@ class PRBot:
             self.access_list = []
             self.save_data(ACCESS_FILE, self.access_list)
         
-        # Запускаем поток для рассылки в фоновом режиме
         self.broadcast_thread = threading.Thread(target=self.broadcast_loop, daemon=True)
         self.broadcast_thread.start()
     
     def load_data(self, filename, default):
-        """
-        Функция для загрузки данных из JSON-файла.
-        Если файл не найден или данные повреждены, загружает значение по умолчанию.
-        """
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            # Сохраняем значение по умолчанию и возвращаем его
             self.save_data(filename, default)
             return default
     
     def save_data(self, filename, data):
-        """Функция для сохранения данных в JSON-файл."""
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
-    # Проверка, является ли пользователь владельцем
     def is_owner(self, user_id):
-        return user_id == self.settings["owner_id"]
+        return user_id == OWNER_ID
     
-    # Проверяет, имеет ли пользователь доступ к боту
     def has_access(self, user_id):
         return self.is_owner(user_id) or user_id in self.access_list
     
-    # Добавляет пользователя в список доступа
     def add_access(self, user_id):
         if user_id not in self.access_list:
             self.access_list.append(user_id)
@@ -74,7 +64,6 @@ class PRBot:
             return True
         return False
     
-    # Удаляет пользователя из списка доступа
     def remove_access(self, user_id):
         if user_id in self.access_list:
             self.access_list.remove(user_id)
@@ -82,7 +71,6 @@ class PRBot:
             return True
         return False
     
-    # Добавляет беседу в список для рассылки
     def add_peer(self, peer_id):
         if peer_id not in self.peers:
             self.peers.append(peer_id)
@@ -90,16 +78,13 @@ class PRBot:
             return True
         return False
     
-    # Удаляет беседу из списка для рассылки
-    # В исходном коде была ошибка: функция вызывала метод append вместо remove
     def remove_peer(self, peer_id):
         if peer_id in self.peers:
-            self.peers.remove(peer_id)  # Исправлено: теперь используется remove
+            self.peers.remove(peer_id)
             self.save_data(PEERS_FILE, self.peers)
             return True
         return False
     
-    # Отправляет сообщение в указанную беседу
     def send_message(self, peer_id, text):
         try:
             self.vk.messages.send(
@@ -107,11 +92,9 @@ class PRBot:
                 message=text,
                 random_id=get_random_id()
             )
-        # Исправлено: `excep` заменено на `except`
         except Exception as e:
-            print(f"Ошибка при отправке сообщения: {e}")
+            print(f"Ошибка: {e}")
     
-    # Функция для отправки одного сообщения всем целевым беседам
     def broadcast_message(self):
         if not self.settings["broadcast_text"]:
             return
@@ -122,33 +105,28 @@ class PRBot:
                     message=self.settings["broadcast_text"],
                     random_id=get_random_id()
                 )
-                time.sleep(1)  # Небольшая пауза между сообщениями, чтобы не попасть под ограничения VK
+                time.sleep(1)
             except Exception as e:
                 print(f"Ошибка: {e}")
-
-    # Бесконечный цикл, который проверяет, нужно ли делать рассылку, и выполняет её
+    
     def broadcast_loop(self):
         while True:
             if self.settings["is_running"] and self.settings["broadcast_text"] and self.peers:
-                self.broadcast_message()
-            time.sleep(3600)  # Проверяем раз в час
+[29.07.2026 19:08] TG Ai Chat: self.broadcast_message()
+            time.sleep(3600)
     
-    # Обрабатывает команды, полученные от пользователей
     def handle_command(self, message):
         text = message.get('text', '').strip()
         user_id = message['from_id']
         peer_id = message['peer_id']
         
         if not text.startswith('/'):
-            return  # Если сообщение не начинается с /, это не команда, игнорируем
+            return
         
         parts = text.split('\n', 1)
         command = parts[0].lower().strip()
         command_text = parts[1] if len(parts) > 1 else ""
         
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Команда: {command}, Текст: {command_text}")
-        
-        ### Команды для владельца
         if command == '/+доступ':
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔ Только владелец может выдавать доступ.")
@@ -165,10 +143,107 @@ class PRBot:
             except ValueError:
                 self.send_message(peer_id, "⚠️ Неверный ID.")
             return
-
+        
         elif command == '/-доступ':
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔ Только владелец может забирать доступ.")
                 return
             if not command_text.strip():
-                self.
+                self.send_message(peer_id, "⚠️ Укажите ID пользователя.")
+                return
+            try:
+                target_id = int(command_text.strip())
+                if self.remove_access(target_id):
+                    self.send_message(peer_id, f"✅ Доступ отозван у пользователя {target_id}")
+                else:
+                    self.send_message(peer_id, f"ℹ️ У пользователя {target_id} нет доступа")
+            except ValueError:
+                self.send_message(peer_id, "⚠️ Неверный ID.")
+            return
+        
+        elif command == '/список':
+            if not self.is_owner(user_id):
+                self.send_message(peer_id, "⛔ Только владелец может смотреть список.")
+                return
+            if self.access_list:
+                users = "\n".join([f"• {uid}" for uid in self.access_list])
+                self.send_message(peer_id, f"📋 Пользователи с доступом:\n{users}")
+            else:
+                self.send_message(peer_id, "📋 Нет пользователей с доступом.")
+            return
+        
+        if not self.has_access(user_id):
+            self.send_message(peer_id, "⛔ У вас нет доступа к боту.")
+            return
+        
+        if command in ['/чат', '/+чат']:
+            if self.add_peer(peer_id):
+                self.send_message(peer_id, f"✅ Беседа {peer_id} добавлена.")
+            else:
+                self.send_message(peer_id, "ℹ️ Уже в базе.")
+        
+        elif command == '/-чат':
+            if self.remove_peer(peer_id):
+                self.send_message(peer_id, f"✅ Беседа {peer_id} удалена.")
+            else:
+                self.send_message(peer_id, "ℹ️ Нет в базе.")
+        
+        elif command == '/старт':
+            if not self.peers:
+                self.send_message(peer_id, "⚠️ Нет бесед.")
+            elif not self.settings["broadcast_text"]:
+                self.send_message(peer_id, "⚠️ Нет текста.")
+            else:
+                self.settings["is_running"] = True
+                self.save_data(SETTINGS_FILE, self.settings)
+                self.send_message(peer_id, f"✅ Запущено в {len(self.peers)} бесед.")
+        
+        elif command == '/стоп':
+            self.settings["is_running"] = False
+            self.save_data(SETTINGS_FILE, self.settings)
+            self.send_message(peer_id, "🛑 Остановлено.")
+        
+        elif command == '/рассылка':
+            if command_text:
+                self.settings["broadcast_text"] = command_text.strip()
+                self.save_data(SETTINGS_FILE, self.settings)
+[29.07.2026 19:08] TG Ai Chat: self.send_message(peer_id, f"✅ Текст обновлен.")
+            else:
+                current = self.settings["broadcast_text"] or "Не задан"
+                self.send_message(peer_id, f"📄 Текст:\n{current}")
+        
+        elif command == '/статус':
+            status = "✅ Запущена" if self.settings["is_running"] else "🛑 Остановлена"
+            self.send_message(peer_id, f"Статус: {status}\nЧатов: {len(self.peers)}\nДоступов: {len(self.access_list)}")
+        
+        elif command == '/помощь':
+            help_text = (
+                "📋 Команды:\n"
+                "/чат — добавить чат\n"
+                "/-чат — удалить чат\n"
+                "/старт — запустить\n"
+                "/стоп — остановить\n"
+                "/рассылка [текст] — задать текст\n"
+                "/статус — статус\n"
+                "/помощь — помощь\n\n"
+                "🔐 Только владелец:\n"
+                "/+доступ [ID] — выдать доступ\n"
+                "/-доступ [ID] — забрать доступ\n"
+                "/список — список доступов"
+            )
+            self.send_message(peer_id, help_text)
+    
+    def run(self):
+        print("Бот запущен")
+        try:
+            for event in self.longpoll.listen():
+                if event.type == VkBotEventType.MESSAGE_NEW:
+                    self.handle_command(event.obj['message'])
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            time.sleep(5)
+            self.run()
+
+if __name__ == "__main__":
+    bot = PRBot()
+    bot.run()
