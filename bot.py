@@ -1,3 +1,4 @@
+import re
 import vk_api
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
@@ -16,6 +17,33 @@ SETTINGS_FILE = "settings.json"
 ACCESS_FILE = "access.json"
 
 class PRBot:
+    def extract_user_id(self, message, text):
+    # Пересланное сообщение
+    fwd = message.get("fwd_messages", [])
+    if fwd:
+        return fwd[0].get("from_id")
+
+    # Упоминание [id123|Имя]
+    match = re.search(r"\[id(\d+)\|", text)
+    if match:
+        return int(match.group(1))
+
+    text = text.strip().replace("@", "")
+    text = text.replace("https://vk.com/", "").replace("http://vk.com/", "")
+
+    # Числовой ID
+    if text.isdigit():
+        return int(text)
+
+    # Username
+    try:
+        user = self.vk.users.get(user_ids=text)
+        if user:
+            return user[0]["id"]
+    except Exception:
+        pass
+
+    return None
     def __init__(self):
         self.vk_session = vk_api.VkApi(token=TOKEN)
         self.vk = self.vk_session.get_api()
@@ -128,38 +156,37 @@ class PRBot:
         command_text = parts[1] if len(parts) > 1 else ""
         
         if command == '/+доступ':
-            if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
-                return
-            if not command_text.strip():
-                self.send_message(peer_id, "⚠️ Укажите ID пользователя.")
-                return
-            try:
-                target_id = int(command_text.strip())
-                if self.add_access(target_id):
-                    self.send_message(peer_id, f"✅ Доступ выдан пользователю {target_id}")
-                else:
-                    self.send_message(peer_id, f"ℹ️ У пользователя {target_id} уже есть доступ")
-            except ValueError:
-                self.send_message(peer_id, "⚠️ Неверный ID.")
-            return
-        
-        elif command == '/-доступ':
-            if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
-                return
-            if not command_text.strip():
-                self.send_message(peer_id, "⚠️ Укажите ID пользователя.")
-                return
-            try:
-                target_id = int(command_text.strip())
-                if self.remove_access(target_id):
-                    self.send_message(peer_id, f"✅ Доступ отозван у пользователя {target_id}")
-                else:
-                    self.send_message(peer_id, f"ℹ️ У пользователя {target_id} нет доступа")
-            except ValueError:
-                self.send_message(peer_id, "⚠️ Неверный ID.")
-            return
+    if not self.is_owner(user_id):
+        self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
+        return
+
+    target_id = self.extract_user_id(message, command_text)
+
+    if not target_id:
+        self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
+        return
+
+    if self.add_access(target_id):
+        self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
+    else:
+        self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
+    return
+elif command == '/-доступ':
+    if not self.is_owner(user_id):
+        self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
+        return
+
+    target_id = self.extract_user_id(message, command_text)
+
+    if not target_id:
+        self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
+        return
+
+    if self.remove_access(target_id):
+        self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
+    else:
+        self.send_message(peer_id, f"ℹ️ У [id{target_id}|пользователя] нет доступа")
+    return
         
         elif command == '/список':
             if not self.is_owner(user_id):
