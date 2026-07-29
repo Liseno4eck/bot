@@ -209,7 +209,7 @@ class PRBot:
                 self.save_data(SETTINGS_FILE, self.settings)
                 self.send_message(peer_id, f"✅ Текст обновлен.")
             else:
-[29.07.2026 19:29] TG Ai Chat: current = self.settings["broadcast_text"] or "Не задан"
+ current = self.settings["broadcast_text"] or "Не задан"
                 self.send_message(peer_id, f"📄 Текст:\n{current}")
         
         elif command == '/статус':
