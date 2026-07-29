@@ -211,13 +211,13 @@ if command == '/список':
             else:
                 self.send_message(peer_id, "ℹ️ Уже в базе.")
         
-        if command == '/-чат':
+    if command == '/-чат':
             if self.remove_peer(peer_id):
                 self.send_message(peer_id, f"✅ Беседа {peer_id} удалена.")
             else:
                 self.send_message(peer_id, "ℹ️ Нет в базе.")
         
-        if command == '/старт':
+    if command == '/старт':
             if not self.peers:
                 self.send_message(peer_id, "⚠️ Нет бесед.")
             elif not self.settings["broadcast_text"]:
@@ -227,12 +227,12 @@ if command == '/список':
                 self.save_data(SETTINGS_FILE, self.settings)
                 self.send_message(peer_id, f"✅ Запущено в {len(self.peers)} бесед.")
         
-        if command == '/стоп':
+    if command == '/стоп':
             self.settings["is_running"] = False
             self.save_data(SETTINGS_FILE, self.settings)
             self.send_message(peer_id, "🛑 Остановлено.")
         
-        if command == '/рассылка':
+    if command == '/рассылка':
             if command_text:
                 self.settings["broadcast_text"] = command_text.strip()
                 self.save_data(SETTINGS_FILE, self.settings)
@@ -241,11 +241,11 @@ if command == '/список':
                 current = self.settings["broadcast_text"] or "Не задан"
                 self.send_message(peer_id, f"📄 Текст:\n{current}")
         
-        if command == '/статус':
+    if command == '/статус':
             status = "✅ Запущена" if self.settings["is_running"] else "🛑 Остановлена"
             self.send_message(peer_id, f"Статус: {status}\nЧатов: {len(self.peers)}\nДоступов: {len(self.access_list)}")
         
-        if command == '/помощь':
+    if command == '/помощь':
             help_text = (
                 "📋 Команды:\n"
                 "/чат — добавить чат\n"
