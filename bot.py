@@ -170,7 +170,7 @@ if not target_id:
 
 if self.add_access(target_id):
         self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
-    else:
+else:
         self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
     return
 if command == '/-доступ':
@@ -186,7 +186,7 @@ if not target_id:
 
 if self.remove_access(target_id):
         self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
-    else:
+else:
         self.send_message(peer_id, f"ℹ️ У [id{target_id}|пользователя] нет доступа")
     return
         
