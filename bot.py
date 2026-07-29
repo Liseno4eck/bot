@@ -77,7 +77,7 @@ def load_data(self, filename, default):
             self.save_data(filename, default)
             return default
     
-    def save_data(self, filename, data):
+def save_data(self, filename, data):
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
