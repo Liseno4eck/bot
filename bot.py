@@ -162,7 +162,7 @@ def handle_command(self, message):
                self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
                return
 
-    target_id = self.extract_user_id(message, command_text)
+target_id = self.extract_user_id(message, command_text)
 
     if not target_id:
         self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
