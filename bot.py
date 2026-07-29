@@ -46,7 +46,7 @@ except Exception:
     pass
 
 return None
-    def __init__(self):
+def __init__(self):
         self.vk_session = vk_api.VkApi(token=TOKEN)
         self.vk = self.vk_session.get_api()
         self.longpoll = VkBotLongPoll(self.vk_session, GROUP_ID)
