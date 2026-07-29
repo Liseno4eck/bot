@@ -25,9 +25,9 @@ class PRBot:
 
    def extract_user_id(self, message, text):
     # Упоминание @id123 (Имя)
-    match = re.search(r"\[id(\d+)\|", text)
-    if match:
-        return int(match.group(1))
+        match = re.search(r"\[id(\d+)\|", text)
+        if match:
+            return int(match.group(1))
 
     text = text.strip().replace("@", "")
     text = text.replace("https://vk.com/", "").replace("http://vk.com/", "")
