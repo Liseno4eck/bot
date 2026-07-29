@@ -69,7 +69,7 @@ def __init__(self):
         self.broadcast_thread = threading.Thread(target=self.broadcast_loop, daemon=True)
         self.broadcast_thread.start()
     
-    def load_data(self, filename, default):
+def load_data(self, filename, default):
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
