@@ -188,10 +188,10 @@ class PRBot:
         self.send_message(peer_id, f"ℹ️ У [id{target_id}|пользователя] нет доступа")
     return
         
-        elif command == '/список':
+        if command == '/список':
             if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может смотреть список.")
-                return
+               self.send_message(peer_id, "⛔️ Только владелец может смотреть список.")
+               return
             if self.access_list:
                 users = "\n".join([f"• {uid}" for uid in self.access_list])
                 self.send_message(peer_id, f"📋 Пользователи с доступом:\n{users}")
