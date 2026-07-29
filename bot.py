@@ -18,23 +18,24 @@ ACCESS_FILE = "access.json"
 
 class PRBot:
     def extract_user_id(self, message, text):
-    # Пересланное сообщение
+        # Пересланное сообщение
         fwd = message.get("fwd_messages", [])
         if fwd:
-           return fwd[0].get("from_id")
+            return fwd[0].get("from_id")
 
-    def extract_user_id(self, message, text):
-    # Упоминание @id123 (Имя)
+        # Упоминание @id123 (Имя)
         match = re.search(r"\[id(\d+)\|", text)
         if match:
             return int(match.group(1))
 
-    text = text.strip().replace("@", "")
-    text = text.replace("https://vk.com/", "").replace("http://vk.com/", "")
+        text = text.strip().replace("@", "")
+        text = text.replace("https://vk.com/", "").replace("http://vk.com/", "")
 
-    # Числовой ID
-    if text.isdigit():
-        return int(text)
+        # Числовой ID
+        if text.isdigit():
+            return int(text)
+
+        return None
 
     # Username
     try:
