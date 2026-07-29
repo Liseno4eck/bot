@@ -172,7 +172,7 @@ if self.add_access(target_id):
         self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
 else:
         self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
-    return
+return
 if command == '/-доступ':
     if not self.is_owner(user_id):
            self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
