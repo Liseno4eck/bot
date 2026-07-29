@@ -247,5 +247,3 @@ class PRBot:
 if __name__ == "__main__":
     bot = PRBot()
     bot.run()
-
-💬 -1 token | 💰 1 token
