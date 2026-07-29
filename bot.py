@@ -164,7 +164,7 @@ def handle_command(self, message):
 
 target_id = self.extract_user_id(message, command_text)
 
-    if not target_id:
+if not target_id:
         self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
         return
 
