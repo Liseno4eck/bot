@@ -19,9 +19,9 @@ ACCESS_FILE = "access.json"
 class PRBot:
     def extract_user_id(self, message, text):
     # Пересланное сообщение
-    fwd = message.get("fwd_messages", [])
-    if fwd:
-        return fwd[0].get("from_id")
+        fwd = message.get("fwd_messages", [])
+        if fwd:
+           return fwd[0].get("from_id")
 
     # Упоминание [id123|Имя]
     match = re.search(r"\[id(\d+)\|", text)
