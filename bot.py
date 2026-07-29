@@ -188,7 +188,7 @@ if self.remove_access(target_id):
         self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
 else:
         self.send_message(peer_id, f"ℹ️ У [id{target_id}|пользователя] нет доступа")
-    return
+return
         
 if command == '/список':
     if not self.is_owner(user_id):
