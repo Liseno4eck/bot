@@ -37,15 +37,15 @@ class PRBot:
 
         return None
 
-    # Username
-    try:
-        user = self.vk.users.get(user_ids=text)
-        if user:
-            return user[0]["id"]
-    except Exception:
-        pass
+   # Username
+try:
+    user = self.vk.users.get(user_ids=text)
+    if user:
+        return user[0]["id"]
+except Exception:
+    pass
 
-    return None
+return None
     def __init__(self):
         self.vk_session = vk_api.VkApi(token=TOKEN)
         self.vk = self.vk_session.get_api()
