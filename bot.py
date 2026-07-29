@@ -249,7 +249,7 @@ class PRBot:
                 f"🔄 Статус рассылки: {status}\n"
                 f"💬 Количество бесед: {len(self.peers)}\n"
                 f"📝 Текст рассылки:\n{current_text}\n\n"
-                f"⏰ Интервал рассылки: 10 минут"
+                f"⏰ Интервал рассылки: 1 час"
             )
             self.send_message(peer_id, status_text)
         
