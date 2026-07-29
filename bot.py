@@ -113,7 +113,7 @@ class PRBot:
         while True:
             if self.settings["is_running"] and self.settings["broadcast_text"] and self.peers:
                 self.broadcast_message()
-            time.sleep(3600)
+            time.sleep(60)
     
     def handle_command(self, message):
         text = message.get('text', '').strip()
