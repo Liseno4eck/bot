@@ -168,30 +168,30 @@ if not target_id:
         self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
         return
 
-    if self.add_access(target_id):
+if self.add_access(target_id):
         self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
     else:
         self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
     return
-    if command == '/-доступ':
-        if not self.is_owner(user_id):
+if command == '/-доступ':
+    if not self.is_owner(user_id):
            self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
            return
 
     target_id = self.extract_user_id(message, command_text)
 
-    if not target_id:
+if not target_id:
         self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
         return
 
-    if self.remove_access(target_id):
+if self.remove_access(target_id):
         self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
     else:
         self.send_message(peer_id, f"ℹ️ У [id{target_id}|пользователя] нет доступа")
     return
         
-    if command == '/список':
-        if not self.is_owner(user_id):
+if command == '/список':
+    if not self.is_owner(user_id):
             self.send_message(peer_id, "⛔️ Только владелец может смотреть список.")
             return
             if self.access_list:
@@ -201,11 +201,11 @@ if not target_id:
                 self.send_message(peer_id, "📋 Нет пользователей с доступом.")
             return
         
-        if not self.has_access(user_id):
+    if not self.has_access(user_id):
             self.send_message(peer_id, "⛔️ У вас нет доступа к боту.")
             return
         
-        if command in ['/чат', '/+чат']:
+    if command in ['/чат', '/+чат']:
             if self.add_peer(peer_id):
                 self.send_message(peer_id, f"✅ Беседа {peer_id} добавлена.")
             else:
