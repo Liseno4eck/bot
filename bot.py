@@ -16,6 +16,8 @@ PEERS_FILE = "peers.json"
 SETTINGS_FILE = "settings.json"
 ACCESS_FILE = "access.json"
 
+# Добавляем переменную с фотографией
+ATTACHMENT_PHOTO = "photo875762552_457247353"
 
 class PRBot:
     def __init__(self):
@@ -287,7 +289,8 @@ class PRBot:
                 "/список — список пользователей с доступом\n"
                 "🌟 /+время [минуты] — установить задержку между рассылками"
             )
-            self.send_message(peer_id, help_text)
+            # Отправляем с прикреплением фото
+            self.send_message(peer_id, help_text, attachments=[ATTACHMENT_PHOTO])
             return
 
         # Обработка команды /+время
