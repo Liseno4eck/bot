@@ -115,7 +115,7 @@ class PRBot:
             self.vk.messages.send(
                 peer_id=peer_id,
                 message=text,
-                attachment=",".join(attachments) if attachments else None,
+                attachment=",".join(attachments) if attachments else "",
                 random_id=get_random_id()
             )
         except Exception as e:
@@ -130,7 +130,7 @@ class PRBot:
                 self.vk.messages.send(
                     peer_id=peer_id,
                     message=self.settings["broadcast_text"],
-                    attachment=",".join(attachments) if attachments else None,
+                    attachment=",".join(attachments) if attachments else "",
                     random_id=get_random_id()
                 )
                 time.sleep(self.send_delay)
@@ -286,7 +286,6 @@ class PRBot:
                 "/-доступ [ID] — забрать доступ\n"
                 "/список — список пользователей с доступом\n"
                 "🌟 /+время [минуты] — установить задержку между рассылками"
-                
             )
             self.send_message(peer_id, help_text)
             return
