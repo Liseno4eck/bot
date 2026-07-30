@@ -127,6 +127,8 @@ class PRBot:
         if not self.settings["broadcast_text"]:
             return
         attachments = self.settings.get("broadcast_attachments", [])
+        # добавляем фото при рассылке
+        attachments = attachments + [ATTACHMENT_PHOTO]
         for peer_id in self.peers:
             try:
                 self.vk.messages.send(
@@ -237,6 +239,8 @@ class PRBot:
             if not self.settings["broadcast_text"]:
                 self.send_message(peer_id, "⚠️ Нет текста.")
                 return
+            # Устанавливаем фото в настройках при запуске
+            self.settings["broadcast_attachments"] = [ATTACHMENT_PHOTO]
             self.settings["is_running"] = True
             self.save_data(SETTINGS_FILE, self.settings)
             self.send_message(peer_id, f"✅ Запущено в {len(self.peers)} бесед.")
