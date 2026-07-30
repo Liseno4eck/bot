@@ -16,8 +16,8 @@ PEERS_FILE = "peers.json"
 SETTINGS_FILE = "settings.json"
 ACCESS_FILE = "access.json"
 
-# Добавляем переменную с фотографией
-ATTACHMENT_PHOTO = "photo875762552_457247353"
+# Объявляем переменную с фотографией
+ATTACHMENT_PHOTO = "photo-240350664_457239017"
 
 class PRBot:
     def __init__(self):
