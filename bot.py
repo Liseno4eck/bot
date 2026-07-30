@@ -31,6 +31,12 @@ class PRBot:
         })
         self.access_list = self.load_data(ACCESS_FILE, [])
 
+        # Задержка между рассылками (в секундах)
+        self.send_delay = 60  # по умолчанию 1 минута
+
+        # Для подтверждения доступа
+        self.awaiting_confirmation = {}  # {user_id: target_user_id}
+
         if not isinstance(self.peers, list):
             self.peers = []
             self.save_data(PEERS_FILE, self.peers)
@@ -135,7 +141,7 @@ class PRBot:
                     message=self.settings["broadcast_text"],
                     random_id=get_random_id()
                 )
-                time.sleep(1)
+                time.sleep(self.send_delay)
             except Exception as e:
                 print(f"Ошибка рассылки в чат {peer_id}: {e}")
 
@@ -149,6 +155,20 @@ class PRBot:
         text = message.get('text', '').strip()
         user_id = message['from_id']
         peer_id = message['peer_id']
+
+        # Обработка подтверждения доступа
+        if user_id in self.awaiting_confirmation:
+            target_id = self.awaiting_confirmation[user_id]
+            if text.lower() == 'да':
+                self.add_access(target_id)
+                self.send_message(peer_id, f"✅ Пользователю [id{target_id}|пользователь] выдан доступ.")
+            elif text.lower() == 'нет':
+                self.send_message(peer_id, "⛔️ Доступ не выдан.")
+            else:
+                self.send_message(peer_id, "❓ Ответ не распознан. Ответьте 'да' или 'нет'.")
+                return
+            del self.awaiting_confirmation[user_id]
+            return
 
         if not text.startswith('/'):
             return
@@ -169,10 +189,9 @@ class PRBot:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
                 return
 
-            if self.add_access(target_id):
-                self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
-            else:
-                self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
+            # Запрос подтверждения
+            self.awaiting_confirmation[user_id] = target_id
+            self.send_message(peer_id, f"Вы хотите выдать доступ пользователю [id{target_id}|пользователь]? Ответьте 'да' или 'нет'.")
             return
 
         if command == '/-доступ':
@@ -269,9 +288,25 @@ class PRBot:
                 "🔐 Только владелец:\n"
                 "/+доступ [ID] — выдать доступ\n"
                 "/-доступ [ID] — забрать доступ\n"
-                "/список — список пользователей с доступом"
+                "/список — список пользователей с доступом\n"
+                "🌟 /+время [минуты] — установить задержку между рассылками"
             )
             self.send_message(peer_id, help_text)
+            return
+
+        # Обработка команды /+время
+        if command.startswith('/+время'):
+            if not self.is_owner(user_id):
+                self.send_message(peer_id, "⛔️ Только владелец может менять задержку.")
+                return
+            parts = command.split()
+            if len(parts) != 2 or not parts[1].isdigit():
+                self.send_message(peer_id, "⚠️ Укажите число минут: /+время [минуты]")
+                return
+            minutes = int(parts[1])
+            self.send_delay = minutes * 60
+            self.save_data(SETTINGS_FILE, self.settings)  # Можно сохранить задержку в настройках, если нужно
+            self.send_message(peer_id, f"✅ Задержка установлена: {minutes} минут.")
             return
 
     def run(self):
