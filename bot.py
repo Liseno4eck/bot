@@ -16,8 +16,6 @@ PEERS_FILE = "peers.json"
 SETTINGS_FILE = "settings.json"
 ACCESS_FILE = "access.json"
 
-# Объявляем переменную с фотографией
-ATTACHMENT_PHOTO = "photo-240350664_457239017"
 
 class PRBot:
     def __init__(self):
@@ -28,15 +26,10 @@ class PRBot:
         self.peers = self.load_data(PEERS_FILE, [])
         self.settings = self.load_data(SETTINGS_FILE, {
             "broadcast_text": "",
-            "broadcast_attachments": [],  # поддержка прикреплений
             "is_running": False,
             "owner_id": OWNER_ID
         })
         self.access_list = self.load_data(ACCESS_FILE, [])
-
-        self.send_delay = 60  # задержка между рассылками
-
-        self.awaiting_confirmation = {}  # {user_id: target_user_id}
 
         if not isinstance(self.peers, list):
             self.peers = []
@@ -95,29 +88,38 @@ class PRBot:
         return False
 
     def extract_user_id(self, message, text):
+        # Пересланное сообщение
         fwd = message.get("fwd_messages", [])
         if fwd:
             return fwd[0].get("from_id")
+
+        # Упоминание [id123|Имя]
         match = re.search(r"\[id(\d+)\|", text)
         if match:
             return int(match.group(1))
-        clean_text = text.strip().replace("@", "").replace("https://vk.com/", "").replace("http://vk.com/", "")
+
+        clean_text = text.strip().replace("@", "")
+        clean_text = clean_text.replace("https://vk.com/", "").replace("http://vk.com/", "")
+
+        # Числовой ID
         if clean_text.isdigit():
             return int(clean_text)
+
+        # Попытка получить по username (если это просто имя без @)
         try:
             user = self.vk.users.get(user_ids=clean_text)
             if user:
                 return user[0]["id"]
         except Exception:
             pass
+
         return None
 
-    def send_message(self, peer_id, text, attachments=None):
+    def send_message(self, peer_id, text):
         try:
             self.vk.messages.send(
                 peer_id=peer_id,
                 message=text,
-                attachment=",".join(attachments) if attachments else "",
                 random_id=get_random_id()
             )
         except Exception as e:
@@ -126,17 +128,14 @@ class PRBot:
     def broadcast_message(self):
         if not self.settings["broadcast_text"]:
             return
-        attachments = self.settings.get("broadcast_attachments", [])
-        # Не добавляем повторно фото
         for peer_id in self.peers:
             try:
                 self.vk.messages.send(
                     peer_id=peer_id,
                     message=self.settings["broadcast_text"],
-                    attachment=",".join(attachments) if attachments else "",
                     random_id=get_random_id()
                 )
-                time.sleep(self.send_delay)
+                time.sleep(1)
             except Exception as e:
                 print(f"Ошибка рассылки в чат {peer_id}: {e}")
 
@@ -151,48 +150,41 @@ class PRBot:
         user_id = message['from_id']
         peer_id = message['peer_id']
 
-        # Обработка подтверждения доступа
-        if user_id in self.awaiting_confirmation:
-            target_id = self.awaiting_confirmation[user_id]
-            if text.lower() == 'да':
-                self.add_access(target_id)
-                self.send_message(peer_id, f"✅ Пользователю [id{target_id}|пользователь] выдан доступ.")
-            elif text.lower() == 'нет':
-                self.send_message(peer_id, "⛔️ Доступ не выдан.")
-            else:
-                self.send_message(peer_id, "❓ Ответ не распознан. Ответьте 'да' или 'нет'.")
-                return
-            del self.awaiting_confirmation[user_id]
-            return
-
         if not text.startswith('/'):
             return
 
+        # Разделяем команду и текст после неё: /команда\nтекст
         parts = text.split('\n', 1)
         command = parts[0].lower().strip()
         command_text = parts[1] if len(parts) > 1 else ""
 
-        # Обработка команды /+доступ
+        # Команды для владельца: доступ
         if command == '/+доступ':
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
                 return
+
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
                 return
-            self.awaiting_confirmation[user_id] = target_id
-            self.send_message(peer_id, f"Вы хотите выдать доступ пользователю [id{target_id}|пользователь]? Ответьте 'да' или 'нет'.")
+
+            if self.add_access(target_id):
+                self.send_message(peer_id, f"✅ Доступ выдан пользователю [id{target_id}|пользователь]")
+            else:
+                self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
             return
 
         if command == '/-доступ':
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
                 return
+
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
                 return
+
             if self.remove_access(target_id):
                 self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
             else:
@@ -238,8 +230,6 @@ class PRBot:
             if not self.settings["broadcast_text"]:
                 self.send_message(peer_id, "⚠️ Нет текста.")
                 return
-            # Устанавливаем фото в настройках при запуске
-            self.settings["broadcast_attachments"] = [ATTACHMENT_PHOTO]
             self.settings["is_running"] = True
             self.save_data(SETTINGS_FILE, self.settings)
             self.send_message(peer_id, f"✅ Запущено в {len(self.peers)} бесед.")
@@ -253,22 +243,12 @@ class PRBot:
 
         if command == '/рассылка':
             if command_text:
-                # Собираем вложения из сообщения
-                attachments = []
-                message_attachments = message.get('attachments', [])
-                for att in message_attachments:
-                    if att['type'] == 'photo':
-                        owner_id = att['photo']['owner_id']
-                        media_id = att['photo']['id']
-                        attachments.append(f"photo{owner_id}_{media_id}")
                 self.settings["broadcast_text"] = command_text.strip()
-                self.settings["broadcast_attachments"] = attachments
                 self.save_data(SETTINGS_FILE, self.settings)
-                self.send_message(peer_id, "✅ Текст и вложения обновлены.")
+                self.send_message(peer_id, "✅ Текст обновлён.")
             else:
-                current_text = self.settings.get("broadcast_text", "Не задан")
-                current_attachments = self.settings.get("broadcast_attachments", [])
-                self.send_message(peer_id, f"📄 Текст:\n{current_text}\nВложения: {len(current_attachments)} фото")
+                current = self.settings["broadcast_text"] or "Не задан"
+                self.send_message(peer_id, f"📄 Текст:\n{current}")
             return
 
         if command == '/статус':
@@ -283,32 +263,15 @@ class PRBot:
                 "/-чат — удалить чат\n"
                 "/старт — запустить рассылку\n"
                 "/стоп — остановить рассылку\n"
-                "/рассылка [текст] — задать текст рассылки и вложения\n"
+                "/рассылка [текст] — задать текст рассылки\n"
                 "/статус — статус бота\n"
                 "/помощь — помощь\n\n"
                 "🔐 Только владелец:\n"
                 "/+доступ [ID] — выдать доступ\n"
                 "/-доступ [ID] — забрать доступ\n"
-                "/список — список пользователей с доступом\n"
-                "🌟 /+время [минуты] — установить задержку между рассылками"
+                "/список — список пользователей с доступом"
             )
-            # Отправляем с прикреплением фото
-            self.send_message(peer_id, help_text, attachments=[ATTACHMENT_PHOTO])
-            return
-
-        # Обработка команды /+время
-        if command.startswith('/+время'):
-            if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может менять задержку.")
-                return
-            parts = command.split()
-            if len(parts) != 2 or not parts[1].isdigit():
-                self.send_message(peer_id, "⚠️ Укажите число минут: /+время [минуты]")
-                return
-            minutes = int(parts[1])
-            self.send_delay = minutes * 60
-            self.save_data(SETTINGS_FILE, self.settings)  # Можно сохранить задержку
-            self.send_message(peer_id, f"✅ Задержка установлена: {minutes} минут.")
+            self.send_message(peer_id, help_text)
             return
 
     def run(self):
@@ -321,6 +284,7 @@ class PRBot:
             except Exception as e:
                 print(f"Ошибка longpoll: {e}")
                 time.sleep(5)
+
 
 if __name__ == "__main__":
     bot = PRBot()
