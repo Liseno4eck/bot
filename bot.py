@@ -127,8 +127,7 @@ class PRBot:
         if not self.settings["broadcast_text"]:
             return
         attachments = self.settings.get("broadcast_attachments", [])
-        # добавляем фото при рассылке
-        attachments = attachments + [ATTACHMENT_PHOTO]
+        # Не добавляем повторно фото
         for peer_id in self.peers:
             try:
                 self.vk.messages.send(
@@ -254,7 +253,7 @@ class PRBot:
 
         if command == '/рассылка':
             if command_text:
-                # Проверяем наличие прикреплений
+                # Собираем вложения из сообщения
                 attachments = []
                 message_attachments = message.get('attachments', [])
                 for att in message_attachments:
