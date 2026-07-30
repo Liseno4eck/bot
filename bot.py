@@ -178,7 +178,7 @@ class PRBot:
         command = parts[0].lower().strip()
         command_text = parts[1] if len(parts) > 1 else ""
 
-        # Команды для владельца: доступ
+        # Обработка команды /+доступ
         if command == '/+доступ':
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
@@ -319,7 +319,6 @@ class PRBot:
             except Exception as e:
                 print(f"Ошибка longpoll: {e}")
                 time.sleep(5)
-
 
 if __name__ == "__main__":
     bot = PRBot()
