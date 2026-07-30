@@ -26,15 +26,14 @@ class PRBot:
         self.peers = self.load_data(PEERS_FILE, [])
         self.settings = self.load_data(SETTINGS_FILE, {
             "broadcast_text": "",
+            "broadcast_attachments": [],  # поддержка прикреплений
             "is_running": False,
             "owner_id": OWNER_ID
         })
         self.access_list = self.load_data(ACCESS_FILE, [])
 
-        # Задержка между рассылками (в секундах)
-        self.send_delay = 60  # по умолчанию 1 минута
+        self.send_delay = 60  # задержка между рассылками
 
-        # Для подтверждения доступа
         self.awaiting_confirmation = {}  # {user_id: target_user_id}
 
         if not isinstance(self.peers, list):
@@ -94,38 +93,29 @@ class PRBot:
         return False
 
     def extract_user_id(self, message, text):
-        # Пересланное сообщение
         fwd = message.get("fwd_messages", [])
         if fwd:
             return fwd[0].get("from_id")
-
-        # Упоминание [id123|Имя]
         match = re.search(r"\[id(\d+)\|", text)
         if match:
             return int(match.group(1))
-
-        clean_text = text.strip().replace("@", "")
-        clean_text = clean_text.replace("https://vk.com/", "").replace("http://vk.com/", "")
-
-        # Числовой ID
+        clean_text = text.strip().replace("@", "").replace("https://vk.com/", "").replace("http://vk.com/", "")
         if clean_text.isdigit():
             return int(clean_text)
-
-        # Попытка получить по username (если это просто имя без @)
         try:
             user = self.vk.users.get(user_ids=clean_text)
             if user:
                 return user[0]["id"]
         except Exception:
             pass
-
         return None
 
-    def send_message(self, peer_id, text):
+    def send_message(self, peer_id, text, attachments=None):
         try:
             self.vk.messages.send(
                 peer_id=peer_id,
                 message=text,
+                attachment=",".join(attachments) if attachments else None,
                 random_id=get_random_id()
             )
         except Exception as e:
@@ -134,11 +124,13 @@ class PRBot:
     def broadcast_message(self):
         if not self.settings["broadcast_text"]:
             return
+        attachments = self.settings.get("broadcast_attachments", [])
         for peer_id in self.peers:
             try:
                 self.vk.messages.send(
                     peer_id=peer_id,
                     message=self.settings["broadcast_text"],
+                    attachment=",".join(attachments) if attachments else None,
                     random_id=get_random_id()
                 )
                 time.sleep(self.send_delay)
@@ -173,7 +165,6 @@ class PRBot:
         if not text.startswith('/'):
             return
 
-        # Разделяем команду и текст после неё: /команда\nтекст
         parts = text.split('\n', 1)
         command = parts[0].lower().strip()
         command_text = parts[1] if len(parts) > 1 else ""
@@ -183,13 +174,10 @@ class PRBot:
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
                 return
-
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
                 return
-
-            # Запрос подтверждения
             self.awaiting_confirmation[user_id] = target_id
             self.send_message(peer_id, f"Вы хотите выдать доступ пользователю [id{target_id}|пользователь]? Ответьте 'да' или 'нет'.")
             return
@@ -198,12 +186,10 @@ class PRBot:
             if not self.is_owner(user_id):
                 self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
                 return
-
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
                 return
-
             if self.remove_access(target_id):
                 self.send_message(peer_id, f"✅ Доступ отозван у [id{target_id}|пользователя]")
             else:
@@ -262,12 +248,22 @@ class PRBot:
 
         if command == '/рассылка':
             if command_text:
+                # Проверяем наличие прикреплений
+                attachments = []
+                message_attachments = message.get('attachments', [])
+                for att in message_attachments:
+                    if att['type'] == 'photo':
+                        owner_id = att['photo']['owner_id']
+                        media_id = att['photo']['id']
+                        attachments.append(f"photo{owner_id}_{media_id}")
                 self.settings["broadcast_text"] = command_text.strip()
+                self.settings["broadcast_attachments"] = attachments
                 self.save_data(SETTINGS_FILE, self.settings)
-                self.send_message(peer_id, "✅ Текст обновлён.")
+                self.send_message(peer_id, "✅ Текст и вложения обновлены.")
             else:
-                current = self.settings["broadcast_text"] or "Не задан"
-                self.send_message(peer_id, f"📄 Текст:\n{current}")
+                current_text = self.settings.get("broadcast_text", "Не задан")
+                current_attachments = self.settings.get("broadcast_attachments", [])
+                self.send_message(peer_id, f"📄 Текст:\n{current_text}\nВложения: {len(current_attachments)} фото")
             return
 
         if command == '/статус':
@@ -282,14 +278,15 @@ class PRBot:
                 "/-чат — удалить чат\n"
                 "/старт — запустить рассылку\n"
                 "/стоп — остановить рассылку\n"
-                "/рассылка [текст] — задать текст рассылки\n"
+                "/рассылка [текст] — задать текст рассылки и вложения\n"
                 "/статус — статус бота\n"
                 "/помощь — помощь\n\n"
+                "🌟 /+время [минуты] — установить задержку между рассылками"
                 "🔐 Только владелец:\n"
                 "/+доступ [ID] — выдать доступ\n"
                 "/-доступ [ID] — забрать доступ\n"
                 "/список — список пользователей с доступом\n"
-                "🌟 /+время [минуты] — установить задержку между рассылками"
+                
             )
             self.send_message(peer_id, help_text)
             return
@@ -305,7 +302,7 @@ class PRBot:
                 return
             minutes = int(parts[1])
             self.send_delay = minutes * 60
-            self.save_data(SETTINGS_FILE, self.settings)  # Можно сохранить задержку в настройках, если нужно
+            self.save_data(SETTINGS_FILE, self.settings)  # Можно сохранить задержку
             self.send_message(peer_id, f"✅ Задержка установлена: {minutes} минут.")
             return
 
