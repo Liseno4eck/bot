@@ -1,34 +1,50 @@
+import os
 import re
+import json
+import time
+import threading
+
 import vk_api
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
-import time
-import threading
-import json
-from datetime import datetime
 
-# Конфигурация
-TOKEN = "vk1.a.baBit_arE7XyBbqXVkUrUYKMqCOw2zAZJ5_ZiFTyyW2hblfgfj0xadnRuTLIJSpa7G58feIA1p-UIt5ysnef1gwh4u78K3vV51Wc5IBmPLOJ5JyTO49wzxoWL1tMwtg5AQgC4QhV7Ka4tAJXgbqgVp75gQ39T11_72y4ZYiuTCgv36Sw8nrvcxOKPxcrW9Bme2Cx0UJDKud6S4bysNUO-w"
-GROUP_ID = 240350664
-OWNER_ID = 875762552
+# ---------- Конфигурация (берётся из переменных окружения хостинга) ----------
+TOKEN = os.getenv("TOKEN") or os.getenv("VK_TOKEN")
+if not TOKEN:
+    raise RuntimeError("Не задана переменная окружения TOKEN (токен сообщества VK)")
 
-PEERS_FILE = "peers.json"
-SETTINGS_FILE = "settings.json"
-ACCESS_FILE = "access.json"
+GROUP_ID = int(os.getenv("GROUP_ID", "240350664"))
+OWNER_ID = int(os.getenv("OWNER_ID", "875762552"))
+
+# Папка для хранения данных. Если на хостинге есть постоянный диск/том,
+# укажите путь к нему в переменной DATA_DIR, чтобы файлы не пропадали при перезапуске.
+DATA_DIR = os.getenv("DATA_DIR", ".")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+PEERS_FILE = os.path.join(DATA_DIR, "peers.json")
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+ACCESS_FILE = os.path.join(DATA_DIR, "access.json")
+
+BROADCAST_INTERVAL = 3600  # секунд между рассылками
+
+DEFAULT_SETTINGS = {
+    "broadcast_text": "",
+    "is_running": False,
+    "owner_id": OWNER_ID,
+    "last_broadcast": 0,
+}
 
 
 class PRBot:
     def __init__(self):
+        self.lock = threading.Lock()
+
         self.vk_session = vk_api.VkApi(token=TOKEN)
         self.vk = self.vk_session.get_api()
         self.longpoll = VkBotLongPoll(self.vk_session, GROUP_ID)
 
         self.peers = self.load_data(PEERS_FILE, [])
-        self.settings = self.load_data(SETTINGS_FILE, {
-            "broadcast_text": "",
-            "is_running": False,
-            "owner_id": OWNER_ID
-        })
+        self.settings = self.load_data(SETTINGS_FILE, dict(DEFAULT_SETTINGS))
         self.access_list = self.load_data(ACCESS_FILE, [])
 
         if not isinstance(self.peers, list):
@@ -37,10 +53,20 @@ class PRBot:
         if not isinstance(self.access_list, list):
             self.access_list = []
             self.save_data(ACCESS_FILE, self.access_list)
+        if not isinstance(self.settings, dict):
+            self.settings = dict(DEFAULT_SETTINGS)
+
+        # Дополняем настройки недостающими ключами (если файл старый)
+        for key, value in DEFAULT_SETTINGS.items():
+            self.settings.setdefault(key, value)
+        self.save_data(SETTINGS_FILE, self.settings)
+
+        print(f"Загружено бесед: {len(self.peers)}, доступов: {len(self.access_list)}")
 
         self.broadcast_thread = threading.Thread(target=self.broadcast_loop, daemon=True)
         self.broadcast_thread.start()
 
+    # ---------- Работа с файлами ----------
     def load_data(self, filename, default):
         try:
             with open(filename, 'r', encoding='utf-8') as f:
@@ -50,9 +76,14 @@ class PRBot:
             return default
 
     def save_data(self, filename, data):
-        with open(filename, 'w', encoding='utf-8') as f:
+        # Атомарная запись: сначала во временный файл, потом замена,
+        # чтобы файл не повредился, если бота остановят посреди записи
+        tmp = filename + ".tmp"
+        with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, filename)
 
+    # ---------- Права ----------
     def is_owner(self, user_id):
         return user_id == OWNER_ID
 
@@ -60,33 +91,43 @@ class PRBot:
         return self.is_owner(user_id) or user_id in self.access_list
 
     def add_access(self, user_id):
-        if user_id not in self.access_list:
-            self.access_list.append(user_id)
-            self.save_data(ACCESS_FILE, self.access_list)
-            return True
-        return False
+        with self.lock:
+            if user_id not in self.access_list:
+                self.access_list.append(user_id)
+                self.save_data(ACCESS_FILE, self.access_list)
+                return True
+            return False
 
     def remove_access(self, user_id):
-        if user_id in self.access_list:
-            self.access_list.remove(user_id)
-            self.save_data(ACCESS_FILE, self.access_list)
-            return True
-        return False
+        with self.lock:
+            if user_id in self.access_list:
+                self.access_list.remove(user_id)
+                self.save_data(ACCESS_FILE, self.access_list)
+                return True
+            return False
 
+    # ---------- Чаты ----------
     def add_peer(self, peer_id):
-        if peer_id not in self.peers:
-            self.peers.append(peer_id)
-            self.save_data(PEERS_FILE, self.peers)
-            return True
-        return False
+        with self.lock:
+            if peer_id not in self.peers:
+                self.peers.append(peer_id)
+                self.save_data(PEERS_FILE, self.peers)
+                return True
+            return False
 
     def remove_peer(self, peer_id):
-        if peer_id in self.peers:
-            self.peers.remove(peer_id)
-            self.save_data(PEERS_FILE, self.peers)
-            return True
-        return False
+        with self.lock:
+            if peer_id in self.peers:
+                self.peers.remove(peer_id)
+                self.save_data(PEERS_FILE, self.peers)
+                return True
+            return False
 
+    def save_settings(self):
+        with self.lock:
+            self.save_data(SETTINGS_FILE, self.settings)
+
+    # ---------- Определение пользователя ----------
     def extract_user_id(self, message, text):
         # Пересланное сообщение
         fwd = message.get("fwd_messages", [])
@@ -105,16 +146,18 @@ class PRBot:
         if clean_text.isdigit():
             return int(clean_text)
 
-        # Попытка получить по username (если это просто имя без @)
-        try:
-            user = self.vk.users.get(user_ids=clean_text)
-            if user:
-                return user[0]["id"]
-        except Exception:
-            pass
+        # Короткое имя (username)
+        if clean_text:
+            try:
+                user = self.vk.users.get(user_ids=clean_text)
+                if user:
+                    return user[0]["id"]
+            except Exception:
+                pass
 
         return None
 
+    # ---------- Отправка ----------
     def send_message(self, peer_id, text):
         try:
             self.vk.messages.send(
@@ -128,7 +171,7 @@ class PRBot:
     def broadcast_message(self):
         if not self.settings["broadcast_text"]:
             return
-        for peer_id in self.peers:
+        for peer_id in list(self.peers):
             try:
                 self.vk.messages.send(
                     peer_id=peer_id,
@@ -141,10 +184,19 @@ class PRBot:
 
     def broadcast_loop(self):
         while True:
-            if self.settings["is_running"] and self.settings["broadcast_text"] and self.peers:
-                self.broadcast_message()
-            time.sleep(3600)
+            try:
+                if (self.settings["is_running"]
+                        and self.settings["broadcast_text"]
+                        and self.peers
+                        and time.time() - self.settings.get("last_broadcast", 0) >= BROADCAST_INTERVAL):
+                    self.broadcast_message()
+                    self.settings["last_broadcast"] = time.time()
+                    self.save_settings()
+            except Exception as e:
+                print(f"Ошибка в цикле рассылки: {e}")
+            time.sleep(30)
 
+    # ---------- Команды ----------
     def handle_command(self, message):
         text = message.get('text', '').strip()
         user_id = message['from_id']
@@ -153,17 +205,16 @@ class PRBot:
         if not text.startswith('/'):
             return
 
-        # Разделяем команду и текст после неё: /команда\nтекст
+        # Нет доступа — полностью игнорируем, ничего не отвечаем
+        if not self.has_access(user_id):
+            return
+
         parts = text.split('\n', 1)
         command = parts[0].lower().strip()
         command_text = parts[1] if len(parts) > 1 else ""
 
-        # Команды для владельца: доступ
+        # Выдача доступа — может любой, у кого есть доступ
         if command == '/+доступ':
-            if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может выдавать доступ.")
-                return
-
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
@@ -175,14 +226,18 @@ class PRBot:
                 self.send_message(peer_id, f"ℹ️ У пользователя [id{target_id}|пользователь] уже есть доступ")
             return
 
+        # Забрать доступ и посмотреть список — только владелец (для остальных тишина)
         if command == '/-доступ':
             if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может забирать доступ.")
                 return
 
             target_id = self.extract_user_id(message, command_text)
             if not target_id:
                 self.send_message(peer_id, "⚠️ Укажите пользователя: ID, @username, ссылку VK, упоминание или перешлите сообщение.")
+                return
+
+            if self.is_owner(target_id):
+                self.send_message(peer_id, "⚠️ Нельзя забрать доступ у владельца.")
                 return
 
             if self.remove_access(target_id):
@@ -193,18 +248,12 @@ class PRBot:
 
         if command == '/список':
             if not self.is_owner(user_id):
-                self.send_message(peer_id, "⛔️ Только владелец может смотреть список.")
                 return
             if self.access_list:
                 users = "\n".join([f"• {uid}" for uid in self.access_list])
                 self.send_message(peer_id, f"📋 Пользователи с доступом:\n{users}")
             else:
                 self.send_message(peer_id, "📋 Нет пользователей с доступом.")
-            return
-
-        # Проверка прав для остальных команд
-        if not self.has_access(user_id):
-            self.send_message(peer_id, "⛔️ У вас нет доступа к боту.")
             return
 
         # Добавление/удаление чата
@@ -231,20 +280,20 @@ class PRBot:
                 self.send_message(peer_id, "⚠️ Нет текста.")
                 return
             self.settings["is_running"] = True
-            self.save_data(SETTINGS_FILE, self.settings)
+            self.save_settings()
             self.send_message(peer_id, f"✅ Запущено в {len(self.peers)} бесед.")
             return
 
         if command == '/стоп':
             self.settings["is_running"] = False
-            self.save_data(SETTINGS_FILE, self.settings)
+            self.save_settings()
             self.send_message(peer_id, "🛑 Остановлено.")
             return
 
         if command == '/рассылка':
             if command_text:
                 self.settings["broadcast_text"] = command_text.strip()
-                self.save_data(SETTINGS_FILE, self.settings)
+                self.save_settings()
                 self.send_message(peer_id, "✅ Текст обновлён.")
             else:
                 current = self.settings["broadcast_text"] or "Не задан"
@@ -259,15 +308,15 @@ class PRBot:
         if command == '/помощь':
             help_text = (
                 "📋 Команды:\n"
-                "/чат — добавить чат\n"
+                "/+чат — добавить чат\n"
                 "/-чат — удалить чат\n"
                 "/старт — запустить рассылку\n"
                 "/стоп — остановить рассылку\n"
                 "/рассылка [текст] — задать текст рассылки\n"
                 "/статус — статус бота\n"
+                "/+доступ [ID] — выдать доступ\n"
                 "/помощь — помощь\n\n"
                 "🔐 Только владелец:\n"
-                "/+доступ [ID] — выдать доступ\n"
                 "/-доступ [ID] — забрать доступ\n"
                 "/список — список пользователей с доступом"
             )
